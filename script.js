@@ -56,21 +56,39 @@ function setField(field, value){
 }
 
 /* ---------------- AI ---------------- */
-async function askClaude(prompt){
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
+async function askClaude(prompt) {
+  const res = await fetch("/.netlify/functions/claude", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
     body: JSON.stringify({
-      model:"claude-sonnet-4-6",
-      max_tokens:400,
-      messages:[{ role:"user", content: prompt }]
+      prompt
     })
   });
-  if(!res.ok) throw new Error("Request failed (" + res.status + ")");
-  const data = await res.json();
-  const text = (data.content||[]).map(b=>b.text||'').join('').trim();
-  if(!text) throw new Error("Empty response from the model");
-  return text.replace(/^["']|["']$/g,'');
+
+  let data;
+
+  try {
+    data = await res.json();
+  } catch (error) {
+    throw new Error("AI service returned an invalid response.");
+  }
+
+  if (!res.ok) {
+    throw new Error(
+      data?.error ||
+      `AI request failed (${res.status})`
+    );
+  }
+
+  const text = String(data?.text || "").trim();
+
+  if (!text) {
+    throw new Error("Empty response from the AI service.");
+  }
+
+  return text.replace(/^["']|["']$/g, "");
 }
 
 async function withLoading(key, fn){
