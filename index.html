@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Résumé Studio</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body data-accent="burgundy">
+  <div class="app">
+
+    <div class="letterhead">
+      <div class="wordmark">
+        <h1>Résumé <span>Studio</span></h1>
+        <p>
+          Fill in your background on the left. The resume preview on the right
+          updates automatically as you type.
+        </p>
+      </div>
+
+      <div class="controls">
+        <div class="ctrl-group">
+          <span class="ctrl-label">Template</span>
+
+          <div class="seg" id="templateSeg">
+            <button data-template="serif" class="active">Serif</button>
+            <button data-template="sans">Sans</button>
+          </div>
+        </div>
+
+        <div class="ctrl-group">
+          <span class="ctrl-label">Accent</span>
+
+          <div class="swatches" id="accentSwatches">
+            <button
+              class="swatch sw-burgundy active"
+              data-accent="burgundy"
+              title="Burgundy">
+            </button>
+
+            <button
+              class="swatch sw-navy"
+              data-accent="navy"
+              title="Navy">
+            </button>
+
+            <button
+              class="swatch sw-forest"
+              data-accent="forest"
+              title="Forest">
+            </button>
+
+            <button
+              class="swatch sw-plum"
+              data-accent="plum"
+              title="Plum">
+            </button>
+          </div>
+        </div>
+
+        <button class="btn-print" id="printBtn">
+          Print / Save as PDF
+        </button>
+      </div>
+    </div>
+
+    <div id="errorSlot"></div>
+
+    <div class="layout">
+
+      <!-- Resume form -->
+      <div class="editor" id="editor"></div>
+
+      <!-- Resume preview -->
+      <div class="preview-pane">
+        <div class="page-fit-badge" id="pageFitBadge"></div>
+
+        <div class="paper-shell">
+          <div class="paper serif" id="paper"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
