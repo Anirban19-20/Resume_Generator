@@ -187,11 +187,150 @@
   .page-fit-badge.ok{ color:#a9c9a9; background:#1e2e24; border:1px solid #33513f; }
   .page-fit-badge.warn{ color:#e6bcae; background:#3a2620; border:1px solid #6b4430; }
 
-  @media print{
-    body *{ visibility:hidden; }
-    .paper, .paper *{ visibility:visible; }
-    .paper{ position:absolute; top:0; left:0; width:8.5in; max-width:none; min-height:11in;
-      box-shadow:none; margin:0; padding:0.45in 0.55in; }
-    body{ background:#fff; }
-    .page-fit-badge{ display:none; }
+  /* =====================================================
+   PRINT / SAVE AS PDF
+===================================================== */
+
+@media print {
+
+  @page {
+    size: A4;
+    margin: 0;
   }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+
+    width: 100% !important;
+    height: auto !important;
+
+    background: white !important;
+
+    overflow: visible !important;
+  }
+
+  /* Hide everything that should NOT appear in PDF */
+
+  .letterhead,
+  .editor,
+  #errorSlot,
+  .page-fit-badge {
+    display: none !important;
+  }
+
+
+  /* Remove website layout */
+
+  .app {
+    display: block !important;
+
+    width: 100% !important;
+    max-width: none !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+
+  .layout {
+    display: block !important;
+
+    width: 100% !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+
+  /* Remove sticky preview behaviour */
+
+  .preview-pane {
+    display: block !important;
+
+    position: static !important;
+
+    width: 100% !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+
+  .paper-shell {
+    display: block !important;
+
+    width: 100% !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+
+  /* Actual resume */
+
+  .paper {
+    display: block !important;
+
+    position: static !important;
+
+    width: 210mm !important;
+    min-height: 297mm !important;
+
+    max-width: none !important;
+
+    margin: 0 auto !important;
+
+    padding: 12mm 14mm !important;
+
+    background: white !important;
+
+    color: black !important;
+
+    box-shadow: none !important;
+
+    border: none !important;
+    border-radius: 0 !important;
+
+    overflow: visible !important;
+
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+
+  /* Prevent individual sections splitting badly */
+
+  .p-entry {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+
+  .p-section {
+    break-inside: auto;
+  }
+
+
+  .p-entry-head {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+
+  h1,
+  h2,
+  h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+
+  /* Links should remain normal looking */
+
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+}
