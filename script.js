@@ -185,7 +185,7 @@ async function askAI(prompt) {
 
     if (res.status === 404) {
       throw new Error(
-        "AI backend not found (404). Make sure netlify/functions/claude.js is pushed to GitHub and deployed by Netlify."
+        "AI backend not found (404). Make sure netlify/functions/gemini.js is pushed to GitHub and deployed by Netlify."
       );
     }
 
@@ -199,20 +199,20 @@ async function askAI(prompt) {
 
     if (res.status === 404) {
       throw new Error(
-        "AI backend not found (404). Make sure netlify/functions/claude.js is deployed."
+        "AI backend not found (404). Make sure netlify/functions/gemini.js is deployed."
       );
     }
 
     if (res.status === 401) {
       throw new Error(
-        "Anthropic rejected the API key. Check ANTHROPIC_API_KEY in Netlify."
+        "Gemini rejected the API key. Check GEMINI_API_KEY in Netlify."
       );
     }
 
     if (res.status === 429) {
       throw new Error(
         data?.error ||
-        "Anthropic rate limit or API credit limit reached. Check your Anthropic Console billing/credits."
+        "Gemini rate limit or quota reached. Check your Google AI Studio API quota."
       );
     }
 
@@ -877,6 +877,34 @@ document.addEventListener('click', (e) => {
   }
 });
 
+
+/* ---------------- Design / Formatting tabs ---------------- */
+
+document.getElementById('customizeTabs').addEventListener('click', (e) => {
+  const button = e.target.closest('button[data-customize-tab]');
+  if(!button) return;
+
+  const tab = button.dataset.customizeTab;
+
+  document
+    .querySelectorAll('#customizeTabs .customize-tab')
+    .forEach(item => {
+      item.classList.toggle(
+        'active',
+        item.dataset.customizeTab === tab
+      );
+    });
+
+  document
+    .querySelectorAll('[data-customize-panel]')
+    .forEach(panel => {
+      panel.classList.toggle(
+        'active',
+        panel.dataset.customizePanel === tab
+      );
+    });
+});
+
 document.getElementById('themeSeg').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-theme]');
   if(!b) return;
@@ -891,6 +919,13 @@ document.getElementById('templateSeg').addEventListener('click', (e) => {
   if(!b) return;
 
   state.template = b.dataset.template;
+
+  // Templates can recommend a starting layout.
+  // Users can still change the layout afterward in Formatting.
+  if(b.dataset.defaultLayout){
+    state.layout = b.dataset.defaultLayout;
+  }
+
   saveDesignSettings();
   renderAll();
 });
