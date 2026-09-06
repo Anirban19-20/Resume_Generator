@@ -155,7 +155,7 @@ function setField(field, value){
 
 /* ---------------- AI ---------------- */
 async function askClaude(prompt) {
-  const endpoint = "/.netlify/functions/claude";
+  const endpoint ="/.netlify/functions/gemini";
 
   let res;
 
