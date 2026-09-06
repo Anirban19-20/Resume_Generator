@@ -1,9 +1,68 @@
 let idCounter = 1;
 const newId = () => 'id' + (idCounter++);
 
-const state = {
-  template: 'serif',
+const DESIGN_DEFAULTS = {
+  appTheme: 'dark',
+  template: 'classic',
+  layout: 'single',
+  font: 'georgia',
+  spacing: 'normal',
   accent: 'burgundy',
+  customAccent: '#8a2e2e',
+  sections: {
+    summary: true,
+    experience: true,
+    projects: true,
+    education: true,
+    skills: true,
+    objective: true
+  },
+  sectionOrder: [
+    'summary',
+    'experience',
+    'projects',
+    'education',
+    'skills',
+    'objective'
+  ]
+};
+
+function loadDesignSettings(){
+  try{
+    const saved = JSON.parse(localStorage.getItem('resumeStudioDesign') || '{}');
+
+    return {
+      ...DESIGN_DEFAULTS,
+      ...saved,
+      sections: {
+        ...DESIGN_DEFAULTS.sections,
+        ...(saved.sections || {})
+      },
+      sectionOrder: Array.isArray(saved.sectionOrder)
+        ? saved.sectionOrder.filter(key => DESIGN_DEFAULTS.sectionOrder.includes(key))
+        : [...DESIGN_DEFAULTS.sectionOrder]
+    };
+  }catch(error){
+    return {
+      ...DESIGN_DEFAULTS,
+      sections: { ...DESIGN_DEFAULTS.sections },
+      sectionOrder: [...DESIGN_DEFAULTS.sectionOrder]
+    };
+  }
+}
+
+const savedDesign = loadDesignSettings();
+
+const state = {
+  appTheme: savedDesign.appTheme,
+  template: savedDesign.template,
+  layout: savedDesign.layout,
+  font: savedDesign.font,
+  spacing: savedDesign.spacing,
+  accent: savedDesign.accent,
+  customAccent: savedDesign.customAccent,
+  sections: savedDesign.sections,
+  sectionOrder: savedDesign.sectionOrder,
 
   contact: {
     name: '',
@@ -25,6 +84,45 @@ const state = {
   loading: new Set(),
   error: ''
 };
+
+function saveDesignSettings(){
+  const design = {
+    appTheme: state.appTheme,
+    template: state.template,
+    layout: state.layout,
+    font: state.font,
+    spacing: state.spacing,
+    accent: state.accent,
+    customAccent: state.customAccent,
+    sections: state.sections,
+    sectionOrder: state.sectionOrder
+  };
+
+  localStorage.setItem('resumeStudioDesign', JSON.stringify(design));
+}
+
+const ACCENT_COLORS = {
+  burgundy: '#8a2e2e',
+  navy: '#2b3a55',
+  forest: '#33513f',
+  plum: '#5b3358'
+};
+
+const SECTION_LABELS = {
+  summary: 'Profile / Summary',
+  experience: 'Experience',
+  projects: 'Projects',
+  education: 'Education',
+  skills: 'Technical Skills',
+  objective: 'Career Objective'
+};
+
+function getAccentColor(){
+  return state.accent === 'custom'
+    ? state.customAccent
+    : (ACCENT_COLORS[state.accent] || ACCENT_COLORS.burgundy);
+}
+
 
 function esc(s){
   return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -57,40 +155,81 @@ function setField(field, value){
 
 /* ---------------- AI ---------------- */
 async function askClaude(prompt) {
-  const res = await fetch("/.netlify/functions/claude", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      prompt
-    })
-  });
+  const endpoint = "/.netlify/functions/claude";
 
-  let data;
+  let res;
 
   try {
-    data = await res.json();
+    res = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ prompt })
+    });
   } catch (error) {
-    throw new Error("AI service returned an invalid response.");
+    console.error("AI network error:", error);
+    throw new Error(
+      "Could not reach the AI service. Check your internet connection and Netlify Function deployment."
+    );
+  }
+
+  const raw = await res.text();
+
+  let data = {};
+
+  try {
+    data = raw ? JSON.parse(raw) : {};
+  } catch (error) {
+    console.error("Non-JSON AI response:", raw);
+
+    if (res.status === 404) {
+      throw new Error(
+        "AI backend not found (404). Make sure netlify/functions/claude.js is pushed to GitHub and deployed by Netlify."
+      );
+    }
+
+    throw new Error(
+      `AI service returned an invalid response (${res.status}).`
+    );
   }
 
   if (!res.ok) {
+    console.error("AI function error:", res.status, data);
+
+    if (res.status === 404) {
+      throw new Error(
+        "AI backend not found (404). Make sure netlify/functions/claude.js is deployed."
+      );
+    }
+
+    if (res.status === 401) {
+      throw new Error(
+        "Anthropic rejected the API key. Check ANTHROPIC_API_KEY in Netlify."
+      );
+    }
+
+    if (res.status === 429) {
+      throw new Error(
+        data?.error ||
+        "Anthropic rate limit or API credit limit reached. Check your Anthropic Console billing/credits."
+      );
+    }
+
     throw new Error(
       data?.error ||
-      `AI request failed (${res.status})`
+      `AI request failed (${res.status}).`
     );
   }
 
   const text = String(data?.text || "").trim();
 
   if (!text) {
-    throw new Error("Empty response from the AI service.");
+    throw new Error("The AI service returned an empty response.");
   }
 
   return text.replace(/^["']|["']$/g, "");
 }
-
 async function withLoading(key, fn){
   state.loading.add(key);
   state.error = '';
@@ -366,101 +505,250 @@ function renderEditor(){
 function renderPreview(){
   const c = state.contact;
   const paper = document.getElementById('paper');
-  paper.className = 'paper ' + state.template;
+
+  paper.className = [
+    'paper',
+    `template-${state.template}`,
+    `layout-${state.layout}`,
+    `font-${state.font}`,
+    `spacing-${state.spacing}`
+  ].join(' ');
+
+  paper.style.setProperty('--resume-accent', getAccentColor());
 
   const contactBits = [c.email, c.phone, c.location, c.website].filter(Boolean);
+
   const contactHtml = contactBits.length
-    ? `<div class="p-contact">${contactBits.map(esc).join('  —  ')}</div>` : '';
+    ? `<div class="p-contact">${contactBits.map(esc).join('  •  ')}</div>`
+    : '';
 
-  const summaryHtml = state.summary.trim() ? `
-    <hr class="p-rule">
-    <div class="p-section">
-      <h3>Profile</h3>
-      <p class="p-summary" style="margin-top:0;">${esc(state.summary)}</p>
-    </div>` : '';
+  const sectionBlocks = {
+    summary: state.summary.trim() ? `
+      <section class="p-section resume-section section-summary" data-section-key="summary">
+        <h3>Profile</h3>
+        <p class="p-summary">${esc(state.summary)}</p>
+      </section>` : '',
 
-  const expHtml = state.experience.length ? `
-    <hr class="p-rule">
-    <div class="p-section">
-      <h3>Experience</h3>
-      ${state.experience.map(e => `
-        <div class="p-entry">
-          <div class="p-entry-head">
-            <span class="p-entry-role">${esc(e.role)||'<span class=&quot;p-placeholder&quot;>Job title</span>'}${e.company?` — ${esc(e.company)}`:''}</span>
-            <span class="p-entry-date">${esc(e.start)}${(e.start||e.end||e.current)?' – ':''}${e.current?'Present':esc(e.end)}</span>
+    experience: state.experience.length ? `
+      <section class="p-section resume-section section-experience" data-section-key="experience">
+        <h3>Experience</h3>
+        ${state.experience.map(e => `
+          <div class="p-entry">
+            <div class="p-entry-head">
+              <span class="p-entry-role">
+                ${esc(e.role) || '<span class="p-placeholder">Job title</span>'}
+                ${e.company ? ` — ${esc(e.company)}` : ''}
+              </span>
+              <span class="p-entry-date">
+                ${esc(e.start)}
+                ${(e.start || e.end || e.current) ? ' – ' : ''}
+                ${e.current ? 'Present' : esc(e.end)}
+              </span>
+            </div>
+
+            ${e.location ? `<div class="p-entry-sub">${esc(e.location)}</div>` : ''}
+
+            ${e.bullets.filter(b => b.trim()).length
+              ? `<ul>${e.bullets
+                  .filter(b => b.trim())
+                  .map(b => `<li>${esc(b)}</li>`)
+                  .join('')}</ul>`
+              : ''}
           </div>
-          ${e.location?`<div class="p-entry-sub">${esc(e.location)}</div>`:''}
-          ${e.bullets.filter(b=>b.trim()).length ? `<ul>${e.bullets.filter(b=>b.trim()).map(b=>`<li>${esc(b)}</li>`).join('')}</ul>` : ''}
+        `).join('')}
+      </section>` : '',
+
+    projects: state.projects.length ? `
+      <section class="p-section resume-section section-projects" data-section-key="projects">
+        <h3>Projects</h3>
+        ${state.projects.map(p => `
+          <div class="p-entry">
+            <div class="p-entry-role">
+              ${esc(p.name) || '<span class="p-placeholder">Project name</span>'}
+            </div>
+
+            ${p.description
+              ? `<ul><li>${esc(p.description)}</li></ul>`
+              : ''}
+
+            ${p.link
+              ? `<div class="p-entry-link">
+                  Link -
+                  <a
+                    href="${/^https?:\/\//i.test(p.link) ? esc(p.link) : 'https://' + esc(p.link)}"
+                    target="_blank"
+                    rel="noopener"
+                  >${esc(p.link)}</a>
+                </div>`
+              : ''}
+          </div>
+        `).join('')}
+      </section>` : '',
+
+    education: state.education.length ? `
+      <section class="p-section resume-section section-education" data-section-key="education">
+        <h3>Education</h3>
+        ${state.education.map(ed => `
+          <div class="p-entry">
+            <div class="p-entry-role">
+              ${esc(ed.degree) || '<span class="p-placeholder">Degree</span>'}
+              ${ed.school ? ` — ${esc(ed.school)}` : ''}
+            </div>
+
+            ${(ed.start || ed.end)
+              ? `<div class="p-entry-sub">
+                  ${esc(ed.start)}
+                  ${(ed.start || ed.end) ? ' – ' : ''}
+                  ${esc(ed.end)}
+                </div>`
+              : ''}
+
+            ${ed.details
+              ? `<div class="p-entry-details">${esc(ed.details)}</div>`
+              : ''}
+          </div>
+        `).join('')}
+      </section>` : '',
+
+    skills: state.skillGroups.some(g => g.items.trim()) ? `
+      <section class="p-section resume-section section-skills" data-section-key="skills">
+        <h3>Technical Skills</h3>
+        <div class="p-skills">
+          <ul>
+            ${state.skillGroups
+              .filter(g => g.items.trim())
+              .map(g => `
+                <li>
+                  ${g.category.trim()
+                    ? `<strong>${esc(g.category)}:</strong> `
+                    : ''}
+                  ${esc(g.items)}
+                </li>
+              `)
+              .join('')}
+          </ul>
         </div>
-      `).join('')}
-    </div>` : '';
+      </section>` : '',
 
-  const eduHtml = state.education.length ? `
-    <hr class="p-rule">
-    <div class="p-section">
-      <h3>Education</h3>
-      ${state.education.map(ed => `
-        <div class="p-entry">
-          <div class="p-entry-role">${esc(ed.degree)||'<span class=&quot;p-placeholder&quot;>Degree</span>'}${ed.school?` — ${esc(ed.school)}`:''}</div>
-          ${(ed.start||ed.end)?`<div class="p-entry-sub">${esc(ed.start)}${(ed.start||ed.end)?' – ':''}${esc(ed.end)}</div>`:''}
-          ${ed.details?`<div class="p-entry-details">${esc(ed.details)}</div>`:''}
+    objective: state.objective.trim() ? `
+      <section class="p-section resume-section section-objective" data-section-key="objective">
+        <h3>Career Objective</h3>
+        <p class="p-summary">${esc(state.objective)}</p>
+      </section>` : ''
+  };
+
+  const orderedKeys = state.sectionOrder.filter(
+    key => state.sections[key] && sectionBlocks[key]
+  );
+
+  let bodyHtml = '';
+
+  if(state.layout === 'two-column'){
+    const sideKeys = new Set(['education', 'skills', 'objective']);
+
+    const sideHtml = orderedKeys
+      .filter(key => sideKeys.has(key))
+      .map(key => sectionBlocks[key])
+      .join('');
+
+    const mainHtml = orderedKeys
+      .filter(key => !sideKeys.has(key))
+      .map(key => sectionBlocks[key])
+      .join('');
+
+    if(sideHtml && mainHtml){
+      bodyHtml = `
+        <div class="resume-body resume-two-column">
+          <aside class="resume-side">${sideHtml}</aside>
+          <main class="resume-main">${mainHtml}</main>
         </div>
-      `).join('')}
-    </div>` : '';
-
-  const skillsHtml = state.skillGroups.some(g=>g.items.trim()) ? `
-    <hr class="p-rule">
-    <div class="p-section">
-      <h3>Technical Skills</h3>
-      <div class="p-skills"><ul>${state.skillGroups.filter(g=>g.items.trim()).map(g=>
-        `<li>${g.category.trim() ? `<strong>${esc(g.category)}:</strong> ` : ''}${esc(g.items)}</li>`
-      ).join('')}</ul></div>
-    </div>` : '';
-
-  const projHtml = state.projects.length ? `
-    <hr class="p-rule">
-    <div class="p-section">
-      <h3>Projects</h3>
-      ${state.projects.map(p => `
-        <div class="p-entry">
-          <div class="p-entry-role">${esc(p.name)||'<span class=&quot;p-placeholder&quot;>Project name</span>'}</div>
-          ${p.description ? `<ul><li>${esc(p.description)}</li></ul>` : ''}
-          ${p.link ? `<div class="p-entry-link">Link - <a href="${/^https?:\/\//i.test(p.link)?esc(p.link):'https://'+esc(p.link)}" target="_blank" rel="noopener">${esc(p.link)}</a></div>` : ''}
+      `;
+    }else{
+      bodyHtml = `
+        <div class="resume-body resume-single-column">
+          ${orderedKeys.map(key => sectionBlocks[key]).join('')}
         </div>
-      `).join('')}
-    </div>` : '';
-
-  const objectiveHtml = state.objective.trim() ? `
-    <hr class="p-rule">
-    <div class="p-section">
-      <h3>Career Objective</h3>
-      <p class="p-summary" style="margin-top:0;">${esc(state.objective)}</p>
-    </div>` : '';
+      `;
+    }
+  }else{
+    bodyHtml = `
+      <div class="resume-body resume-single-column">
+        ${orderedKeys.map(key => sectionBlocks[key]).join('')}
+      </div>
+    `;
+  }
 
   paper.innerHTML = `
-    <div class="p-name">${c.name.trim() ? esc(c.name) : '<span class="p-placeholder">Your name</span>'}</div>
-    ${c.title.trim() ? `<div class="p-title">${esc(c.title)}</div>` : ''}
-    ${contactHtml}
-    ${summaryHtml}
-    ${expHtml}
-    ${eduHtml}
-    ${skillsHtml}
-    ${projHtml}
-    ${objectiveHtml}
+    <header class="resume-header">
+      <div class="p-name">
+        ${c.name.trim()
+          ? esc(c.name)
+          : '<span class="p-placeholder">Your name</span>'}
+      </div>
+
+      ${c.title.trim()
+        ? `<div class="p-title">${esc(c.title)}</div>`
+        : ''}
+
+      ${contactHtml}
+    </header>
+
+    ${bodyHtml}
   `;
 
   requestAnimationFrame(() => {
     const badge = document.getElementById('pageFitBadge');
     if(!badge) return;
+
     const h = paper.scrollHeight;
-    if(h <= 890){
+
+    if(h <= 900){
       badge.className = 'page-fit-badge ok';
       badge.textContent = '✓ Comfortably fits one page';
-    } else {
+    }else{
       badge.className = 'page-fit-badge warn';
-      badge.textContent = '⚠ Running long — worth trimming a bullet or two so it stays to one page';
+      badge.textContent = '⚠ Running long — trim content or choose Compact spacing';
     }
   });
+}
+
+function renderSectionManager(){
+  const manager = document.getElementById('sectionManager');
+
+  if(!manager) return;
+
+  manager.innerHTML = state.sectionOrder.map((key, index) => `
+    <div class="section-manage-row">
+      <label class="section-toggle">
+        <input
+          type="checkbox"
+          data-section-toggle="${key}"
+          ${state.sections[key] ? 'checked' : ''}
+        >
+        <span>${SECTION_LABELS[key]}</span>
+      </label>
+
+      <div class="section-move-actions">
+        <button
+          type="button"
+          class="mini-btn"
+          data-section-move="up"
+          data-section-key="${key}"
+          ${index === 0 ? 'disabled' : ''}
+          title="Move up"
+        >↑</button>
+
+        <button
+          type="button"
+          class="mini-btn"
+          data-section-move="down"
+          data-section-key="${key}"
+          ${index === state.sectionOrder.length - 1 ? 'disabled' : ''}
+          title="Move down"
+        >↓</button>
+      </div>
+    </div>
+  `).join('');
 }
 
 function renderError(){
@@ -471,13 +759,47 @@ function renderError(){
 }
 
 function renderControls(){
-  document.querySelectorAll('#templateSeg button').forEach(b=>{
+  document.querySelectorAll('#themeSeg button[data-theme]').forEach(b => {
+    b.classList.toggle('active', b.dataset.theme === state.appTheme);
+  });
+
+  document.querySelectorAll('#templateSeg button[data-template]').forEach(b => {
     b.classList.toggle('active', b.dataset.template === state.template);
   });
-  document.querySelectorAll('#accentSwatches .swatch').forEach(b=>{
+
+  document.querySelectorAll('#layoutSeg button[data-layout]').forEach(b => {
+    b.classList.toggle('active', b.dataset.layout === state.layout);
+  });
+
+  document.querySelectorAll('#spacingSeg button[data-spacing]').forEach(b => {
+    b.classList.toggle('active', b.dataset.spacing === state.spacing);
+  });
+
+  document.querySelectorAll('#accentSwatches .swatch').forEach(b => {
     b.classList.toggle('active', b.dataset.accent === state.accent);
   });
+
+  const fontSelect = document.getElementById('fontSelect');
+  if(fontSelect) fontSelect.value = state.font;
+
+  const customAccent = document.getElementById('customAccent');
+  if(customAccent) customAccent.value = state.customAccent;
+
+  document.body.dataset.theme = state.appTheme;
   document.body.dataset.accent = state.accent;
+
+  if(state.accent === 'custom'){
+    const color = state.customAccent || '#8a2e2e';
+    document.body.style.setProperty('--accent', color);
+    document.body.style.setProperty('--accent-bright', color);
+    document.body.style.setProperty('--accent-soft', `${color}22`);
+  }else{
+    document.body.style.removeProperty('--accent');
+    document.body.style.removeProperty('--accent-bright');
+    document.body.style.removeProperty('--accent-soft');
+  }
+
+  renderSectionManager();
 }
 
 function renderAll(){
@@ -555,21 +877,113 @@ document.addEventListener('click', (e) => {
   }
 });
 
+document.getElementById('themeSeg').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-theme]');
+  if(!b) return;
+
+  state.appTheme = b.dataset.theme;
+  saveDesignSettings();
+  renderControls();
+});
+
 document.getElementById('templateSeg').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-template]');
   if(!b) return;
+
   state.template = b.dataset.template;
+  saveDesignSettings();
+  renderAll();
+});
+
+document.getElementById('layoutSeg').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-layout]');
+  if(!b) return;
+
+  state.layout = b.dataset.layout;
+  saveDesignSettings();
+  renderAll();
+});
+
+document.getElementById('spacingSeg').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-spacing]');
+  if(!b) return;
+
+  state.spacing = b.dataset.spacing;
+  saveDesignSettings();
+  renderAll();
+});
+
+document.getElementById('fontSelect').addEventListener('change', (e) => {
+  state.font = e.target.value;
+  saveDesignSettings();
   renderAll();
 });
 
 document.getElementById('accentSwatches').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-accent]');
   if(!b) return;
+
   state.accent = b.dataset.accent;
+  saveDesignSettings();
+  renderAll();
+});
+
+document.getElementById('customAccent').addEventListener('input', (e) => {
+  state.customAccent = e.target.value;
+  state.accent = 'custom';
+  saveDesignSettings();
+  renderAll();
+});
+
+document.getElementById('sectionManager').addEventListener('change', (e) => {
+  const checkbox = e.target.closest('input[data-section-toggle]');
+  if(!checkbox) return;
+
+  state.sections[checkbox.dataset.sectionToggle] = checkbox.checked;
+  saveDesignSettings();
+  renderAll();
+});
+
+document.getElementById('sectionManager').addEventListener('click', (e) => {
+  const button = e.target.closest('button[data-section-move]');
+  if(!button) return;
+
+  const key = button.dataset.sectionKey;
+  const direction = button.dataset.sectionMove;
+  const currentIndex = state.sectionOrder.indexOf(key);
+
+  if(currentIndex === -1) return;
+
+  const targetIndex = direction === 'up'
+    ? currentIndex - 1
+    : currentIndex + 1;
+
+  if(targetIndex < 0 || targetIndex >= state.sectionOrder.length) return;
+
+  const nextOrder = [...state.sectionOrder];
+  [nextOrder[currentIndex], nextOrder[targetIndex]] =
+    [nextOrder[targetIndex], nextOrder[currentIndex]];
+
+  state.sectionOrder = nextOrder;
+  saveDesignSettings();
+  renderAll();
+});
+
+document.getElementById('resetDesignBtn').addEventListener('click', () => {
+  state.appTheme = DESIGN_DEFAULTS.appTheme;
+  state.template = DESIGN_DEFAULTS.template;
+  state.layout = DESIGN_DEFAULTS.layout;
+  state.font = DESIGN_DEFAULTS.font;
+  state.spacing = DESIGN_DEFAULTS.spacing;
+  state.accent = DESIGN_DEFAULTS.accent;
+  state.customAccent = DESIGN_DEFAULTS.customAccent;
+  state.sections = { ...DESIGN_DEFAULTS.sections };
+  state.sectionOrder = [...DESIGN_DEFAULTS.sectionOrder];
+
+  saveDesignSettings();
   renderAll();
 });
 
 document.getElementById('printBtn').addEventListener('click', () => window.print());
 
-/* ---------------- seed with one empty entry each, then render ---------------- */
 renderAll();

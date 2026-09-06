@@ -7,67 +7,147 @@
   <link rel="stylesheet" href="style.css">
 </head>
 
-<body data-accent="burgundy">
+<body data-theme="dark" data-accent="burgundy">
   <div class="app">
 
-    <div class="letterhead">
+    <header class="letterhead">
       <div class="wordmark">
         <h1>Résumé <span>Studio</span></h1>
         <p>
-          Fill in your background on the left. The resume preview on the right
-          updates automatically as you type.
+          Build your resume on the left, customize the design, and see the
+          final result update instantly on the right.
         </p>
       </div>
 
-      <div class="controls">
-        <div class="ctrl-group">
-          <span class="ctrl-label">Template</span>
-
-          <div class="seg" id="templateSeg">
-            <button data-template="serif" class="active">Serif</button>
-            <button data-template="sans">Sans</button>
-          </div>
-        </div>
-
-        <div class="ctrl-group">
-          <span class="ctrl-label">Accent</span>
-
-          <div class="swatches" id="accentSwatches">
-            <button
-              class="swatch sw-burgundy active"
-              data-accent="burgundy"
-              title="Burgundy">
-            </button>
-
-            <button
-              class="swatch sw-navy"
-              data-accent="navy"
-              title="Navy">
-            </button>
-
-            <button
-              class="swatch sw-forest"
-              data-accent="forest"
-              title="Forest">
-            </button>
-
-            <button
-              class="swatch sw-plum"
-              data-accent="plum"
-              title="Plum">
-            </button>
-          </div>
-        </div>
-
+      <div class="header-actions">
         <button class="btn-print" id="printBtn">
           Print / Save as PDF
         </button>
       </div>
-    </div>
+    </header>
+
+    <section class="customize-panel">
+      <div class="customize-head">
+        <div>
+          <span class="eyebrow">Design studio</span>
+          <h2>Customize your resume</h2>
+        </div>
+
+        <button class="reset-design-btn" id="resetDesignBtn" type="button">
+          Reset design
+        </button>
+      </div>
+
+      <div class="customize-grid">
+
+        <div class="custom-block">
+          <span class="ctrl-label">App theme</span>
+
+          <div class="seg" id="themeSeg">
+            <button data-theme="dark" class="active">Dark</button>
+            <button data-theme="light">Light</button>
+            <button data-theme="midnight">Midnight</button>
+            <button data-theme="forest">Forest</button>
+          </div>
+        </div>
+
+        <div class="custom-block">
+          <span class="ctrl-label">Resume style</span>
+
+          <div class="seg" id="templateSeg">
+            <button data-template="classic" class="active">Classic</button>
+            <button data-template="modern">Modern</button>
+            <button data-template="minimal">Minimal</button>
+          </div>
+        </div>
+
+        <div class="custom-block">
+          <span class="ctrl-label">Page layout</span>
+
+          <div class="seg" id="layoutSeg">
+            <button data-layout="single" class="active">1 Column</button>
+            <button data-layout="two-column">2 Columns</button>
+          </div>
+        </div>
+
+        <div class="custom-block">
+          <label class="ctrl-label" for="fontSelect">Font</label>
+
+          <select class="design-select" id="fontSelect">
+            <option value="georgia">Georgia</option>
+            <option value="arial">Arial</option>
+            <option value="times">Times New Roman</option>
+            <option value="calibri">Calibri</option>
+            <option value="verdana">Verdana</option>
+          </select>
+        </div>
+
+        <div class="custom-block">
+          <span class="ctrl-label">Spacing</span>
+
+          <div class="seg" id="spacingSeg">
+            <button data-spacing="compact">Compact</button>
+            <button data-spacing="normal" class="active">Normal</button>
+            <button data-spacing="spacious">Spacious</button>
+          </div>
+        </div>
+
+        <div class="custom-block">
+          <span class="ctrl-label">Accent color</span>
+
+          <div class="accent-control-row">
+            <div class="swatches" id="accentSwatches">
+              <button
+                class="swatch sw-burgundy active"
+                data-accent="burgundy"
+                title="Burgundy"
+                aria-label="Burgundy accent">
+              </button>
+
+              <button
+                class="swatch sw-navy"
+                data-accent="navy"
+                title="Navy"
+                aria-label="Navy accent">
+              </button>
+
+              <button
+                class="swatch sw-forest"
+                data-accent="forest"
+                title="Forest"
+                aria-label="Forest accent">
+              </button>
+
+              <button
+                class="swatch sw-plum"
+                data-accent="plum"
+                title="Plum"
+                aria-label="Plum accent">
+              </button>
+            </div>
+
+            <label class="custom-color-wrap" title="Choose a custom accent color">
+              <span>Custom</span>
+              <input
+                type="color"
+                id="customAccent"
+                value="#8a2e2e"
+                aria-label="Custom accent color">
+            </label>
+          </div>
+        </div>
+
+        <div class="custom-block sections-block">
+          <span class="ctrl-label">Sections & order</span>
+          <div class="section-manager" id="sectionManager"></div>
+        </div>
+
+      </div>
+    </section>
 
     <div id="errorSlot"></div>
 
-    <div class="layout">
+    <main class="layout">
 
       <!-- Resume form -->
       <div class="editor" id="editor"></div>
@@ -77,11 +157,14 @@
         <div class="page-fit-badge" id="pageFitBadge"></div>
 
         <div class="paper-shell">
-          <div class="paper serif" id="paper"></div>
+          <div
+            class="paper template-classic layout-single font-georgia spacing-normal"
+            id="paper">
+          </div>
         </div>
       </div>
 
-    </div>
+    </main>
   </div>
 
   <script src="script.js"></script>
