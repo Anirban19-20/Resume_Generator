@@ -154,7 +154,7 @@ function setField(field, value){
 }
 
 /* ---------------- AI ---------------- */
-async function askClaude(prompt) {
+async function askAI(prompt) {
   const endpoint ="/.netlify/functions/gemini";
 
   let res;
@@ -251,7 +251,7 @@ async function enhanceBullet(expId, idx){
   if(!original || !original.trim()){ state.error = 'Write a bullet first, then enhance it.'; renderAll(); return; }
   await withLoading(key, async () => {
     const prompt = `You are an expert resume writer. Rewrite the following resume bullet point so it is concise (under 25 words), starts with a strong action verb, and reads like a real accomplishment. Return ONLY the rewritten bullet, no quotes, no preamble.\n\nRole: ${exp.role||'(unspecified role)'} at ${exp.company||'(unspecified company)'}\nOriginal bullet: "${original}"`;
-    const result = await askClaude(prompt);
+    const result = await askAI(prompt);
     exp.bullets[idx] = result;
   });
 }
@@ -262,7 +262,7 @@ async function suggestBullets(expId){
   if(!exp.role || !exp.role.trim()){ state.error = 'Add a job title first so the suggestions fit the role.'; renderAll(); return; }
   await withLoading(key, async () => {
     const prompt = `You are an expert resume writer. Based on the job title and company below, write 3 strong, realistic resume bullet points for this role. Each under 25 words, starting with an action verb. Return ONLY the 3 bullets, one per line, no numbering or bullet symbols.\n\nJob title: ${exp.role}\nCompany: ${exp.company||'(unspecified company)'}`;
-    const result = await askClaude(prompt);
+    const result = await askAI(prompt);
     const lines = result.split('\n').map(l=>l.replace(/^[-•*\d.\s]+/,'').trim()).filter(Boolean);
     exp.bullets.push(...lines.slice(0,4));
   });
@@ -273,7 +273,7 @@ async function generateSummary(){
     const expList = state.experience.map(e => `${e.role||'role'} at ${e.company||'company'}`).join('; ') || 'no experience entered yet';
     const skillsList = state.skillGroups.map(g=>g.items).filter(Boolean).join(', ');
     const prompt = `You are an expert resume writer. Write a professional resume summary of 2-3 sentences (under 50 words total) for this candidate. No first person, no clichés like "hardworking team player". Return ONLY the summary text.\n\nTarget title: ${state.contact.title||'(unspecified)'}\nWork background: ${expList}\nSkills: ${skillsList||'(unspecified)'}`;
-    state.summary = await askClaude(prompt);
+    state.summary = await askAI(prompt);
   });
 }
 
@@ -281,7 +281,7 @@ async function enhanceSummary(){
   if(!state.summary.trim()){ state.error = 'Write a draft summary first, then enhance it.'; renderAll(); return; }
   await withLoading('summary-enhance', async () => {
     const prompt = `Rewrite the following resume summary to be sharper and more specific, under 50 words, no first person. Return ONLY the rewritten summary, no quotes.\n\nOriginal: "${state.summary}"`;
-    state.summary = await askClaude(prompt);
+    state.summary = await askAI(prompt);
   });
 }
 
@@ -289,7 +289,7 @@ async function enhanceObjective(){
   if(!state.objective.trim()){ state.error = 'Write a draft objective first, then enhance it.'; renderAll(); return; }
   await withLoading('objective-enhance', async () => {
     const prompt = `Rewrite the following resume career objective to be concise (under 40 words) and specific, in first person ("To..."), no clichés. Return ONLY the rewritten text, no quotes.\n\nOriginal: "${state.objective}"`;
-    state.objective = await askClaude(prompt);
+    state.objective = await askAI(prompt);
   });
 }
 
@@ -301,7 +301,7 @@ async function enhanceProjectDescription(projId){
     const prompt = proj.description && proj.description.trim()
       ? `You are an expert resume writer. Rewrite the following resume project description so it is concise (under 30 words), leads with what was built and its impact, and uses a strong action verb. Return ONLY the rewritten description, no quotes, no preamble.\n\nProject: ${proj.name}\nOriginal description: "${proj.description}"`
       : `You are an expert resume writer. Write a concise resume project description (under 30 words) for a project with this name, describing plausibly what it does and its impact. Use a strong action verb. Return ONLY the description, no quotes, no preamble.\n\nProject: ${proj.name}`;
-    proj.description = await askClaude(prompt);
+    proj.description = await askAI(prompt);
   });
 }
 
